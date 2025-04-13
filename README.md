@@ -1,6 +1,6 @@
 # tmux
 
-Ansible role that installs an configures `tmux`, the way I want.
+Ansible role that installs and configures `tmux`, the way I want.
 
 ## Requirements
 
