@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: MIT-0
+---
+# installs tmux, pushes my preferred config, and attempts to
+# update+install+clean plugins.
+#
+# WARNING: The tmux-reset tag is not intended to interrupt existing tmux
+# sessions, but you should still assume that any continuum/restore sessions will
+# get wiped when using this tag.
+
+- name: Reset tmux
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ansible_user_dir }}/.tmux"
+    - "{{ ansible_user_dir }}/.tmux.conf"
+  when:
+    - install_tmux
+  tags:
+    - tmux-reset
+
+- name: Install tmux
+  ansible.builtin.package:
+    name: tmux
+    state: present
+  become: true
+  when:
+    - install_tmux
+  tags:
+    - tmux
+
+- name: Set up ~/.tmux.conf
+  ansible.builtin.template:
+    dest: "{{ ansible_user_dir }}/.tmux.conf"
+    src: tmux/tmux.conf
+    mode: "0644"
+  when:
+    - install_tmux
+  tags:
+    - tmux
+
+- name: Set up tmux plugins
+  ansible.builtin.git:
+    repo: "https://github.com/tmux-plugins/tpm.git"
+    dest: "{{ ansible_user_dir }}/.tmux/plugins/tpm"
+    version: master
+  when:
+    - install_tmux
+  tags:
+    - tmux
+#
+# The tmux plugin manager behavior is a little bugged - but I'm leaving these
+# links here just in case the below issues/PRs get resolved.
+#
+# https://github.com/tmux-plugins/tpm/blob/master/docs/managing_plugins_via_cmd_line.md
+# https://github.com/tmux-plugins/tpm/issues/105
+# https://github.com/tmux-plugins/tpm/pull/99
+#
+# setenv -g TMUX_PLUGIN_MANAGER_PATH "$HOME/.tmux/plugins/"
+- name: Start a tmux server, and initialize ~/.tmux.conf and plugins
+  ansible.builtin.shell:
+    cmd: "{{ item }}"
+    executable: /bin/bash
+  loop:
+    - |
+      if [[ ! $(pgrep tmux) ]]; then
+        tmux new-session -d
+        SHOULD_RESTART_TMUX_AFTER=1
+      fi
+      tmux source-file {{ ansible_user_dir }}/.tmux.conf
+      ~/.tmux/plugins/tpm/bin/install_plugins
+      ~/.tmux/plugins/tpm/bin/update_plugins all
+      # removes plugins that are not in the configured list
+      ~/.tmux/plugins/tpm/bin/clean_plugins
+      # source the config twice for good measure
+      tmux source-file {{ ansible_user_dir }}/.tmux.conf
+      if [[ "${SHOULD_RESTART_TMUX_AFTER}" == "1" ]]; then
+        tmux kill-server
+        tmux new-session -d
+      fi
+  register: tmux_server_start_result
+  changed_when: tmux_server_start_result.stdout != ""
+  when:
+    - install_tmux
+  tags:
+    - tmux

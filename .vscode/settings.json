@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.yml": "ansible",
+        ".yamllint": "yaml",
+        ".ansible-lint": "yaml",
+        "tmux.conf": "plaintext",
+    },
+    "[ansible]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "ansible.python.interpreterPath": "/bin/python",
+}
