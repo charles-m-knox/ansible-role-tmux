@@ -12,9 +12,10 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - "{{ ansible_user_dir }}/.tmux"
-    - "{{ ansible_user_dir }}/.tmux.conf"
+    - "{{ ansible_env.HOME }}/.tmux"
+    - "{{ ansible_env.HOME }}/.tmux.conf"
   when:
+    - install_tmux is defined
     - install_tmux
   tags:
     - tmux-reset
@@ -25,16 +26,18 @@
     state: present
   become: true
   when:
+    - install_tmux is defined
     - install_tmux
   tags:
     - tmux
 
 - name: Set up ~/.tmux.conf
   ansible.builtin.template:
-    dest: "{{ ansible_user_dir }}/.tmux.conf"
+    dest: "{{ ansible_env.HOME }}/.tmux.conf"
     src: tmux/tmux.conf
     mode: "0644"
   when:
+    - install_tmux is defined
     - install_tmux
   tags:
     - tmux
@@ -42,9 +45,10 @@
 - name: Set up tmux plugins
   ansible.builtin.git:
     repo: "https://github.com/tmux-plugins/tpm.git"
-    dest: "{{ ansible_user_dir }}/.tmux/plugins/tpm"
+    dest: "{{ ansible_env.HOME }}/.tmux/plugins/tpm"
     version: master
   when:
+    - install_tmux is defined
     - install_tmux
   tags:
     - tmux
@@ -67,13 +71,13 @@
         tmux new-session -d
         SHOULD_RESTART_TMUX_AFTER=1
       fi
-      tmux source-file {{ ansible_user_dir }}/.tmux.conf
+      tmux source-file {{ ansible_env.HOME }}/.tmux.conf
       ~/.tmux/plugins/tpm/bin/install_plugins
       ~/.tmux/plugins/tpm/bin/update_plugins all
       # removes plugins that are not in the configured list
       ~/.tmux/plugins/tpm/bin/clean_plugins
       # source the config twice for good measure
-      tmux source-file {{ ansible_user_dir }}/.tmux.conf
+      tmux source-file {{ ansible_env.HOME }}/.tmux.conf
       if [[ "${SHOULD_RESTART_TMUX_AFTER}" == "1" ]]; then
         tmux kill-server
         tmux new-session -d
@@ -81,6 +85,7 @@
   register: tmux_server_start_result
   changed_when: tmux_server_start_result.stdout != ""
   when:
+    - install_tmux is defined
     - install_tmux
   tags:
     - tmux
